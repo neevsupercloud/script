@@ -1,8 +1,12 @@
 #!/bin/bash
 
-# Function to generate random 8-character alphanumeric string
+# Stop unattended-upgrades to avoid dpkg lock issues
+echo "Stopping unattended-upgrades to avoid dpkg lock issues..."
+sudo systemctl stop unattended-upgrades
+
+# Function to generate random 8-character lowercase string
 generate_random_credential() {
-    local credential=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 8)
+    local credential=$(tr -dc 'a-z' </dev/urandom | head -c 8)
     echo "$credential"
 }
 
@@ -25,7 +29,7 @@ password=$username
 
 # Step 4: Automate user creation with `expect`
 echo "Adding a Squid user..."
-sudo apt-get install -y expect  # Ensure `expect` is installed
+sudo apt-get install -y expect  # Ensure expect is installed
 
 expect <<EOF
 spawn sudo squid-add-user
