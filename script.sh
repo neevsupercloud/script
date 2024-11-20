@@ -23,24 +23,29 @@ sudo bash squid3-install.sh
 username=$(generate_random_credential)
 password=$username
 
-# Step 4: Automate adding a Squid user with `expect`
-echo "Adding a Squid user..."
-sudo apt-get install -y expect  # Install expect if not already installed
+# Step 4: Add the user directly to the Squid password file
+echo "Adding the user to the Squid password file..."
+sudo apt-get install -y apache2-utils  # Install htpasswd utility
+sudo htpasswd -b -c /etc/squid/passwd "$username" "$password"
 
-expect <<EOF
-spawn sudo squid-add-user
-expect "New password:"
-send "$password\r"
-expect "Re-type new password:"
-send "$password\r"
-expect eof
-EOF
+# Step 5: Update Squid configuration to use the password file if necessary
+echo "Ensuring Squid is configured to use the password file..."
+if ! grep -q "auth_param basic program /usr/lib/squid3/basic_ncsa_auth /etc/squid/passwd" /etc/squid/squid.conf; then
+    echo "auth_param basic program /usr/lib/squid3/basic_ncsa_auth /etc/squid/passwd" | sudo tee -a /etc/squid/squid.conf
+    echo "auth_param basic children 5" | sudo tee -a /etc/squid/squid.conf
+    echo "auth_param basic realm Squid proxy-caching web server" | sudo tee -a /etc/squid/squid.conf
+    echo "auth_param basic credentialsttl 2 hours" | sudo tee -a /etc/squid/squid.conf
+    echo "auth_param basic casesensitive off" | sudo tee -a /etc/squid/squid.conf
+    echo "acl ncsa_users proxy_auth REQUIRED" | sudo tee -a /etc/squid/squid.conf
+    echo "http_access allow ncsa_users" | sudo tee -a /etc/squid/squid.conf
+    sudo systemctl restart squid
+fi
 
-# Step 5: Store the username and password in a file
+# Step 6: Store the credentials in a file
 echo "Storing credentials in password.txt..."
 echo "Username: $username" > password.txt
 echo "Password: $password" >> password.txt
 
-# Step 6: Display the credentials
+# Step 7: Display the credentials
 echo "Displaying the created credentials:"
 cat password.txt
